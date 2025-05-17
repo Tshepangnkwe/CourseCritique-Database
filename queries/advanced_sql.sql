@@ -4,7 +4,8 @@
 -- =============================================
 
 -- 1. Instructor Analytics with Privacy + Formatting
-VARIABLE mask_email CHAR := 'YES';
+VARIABLE mask_email VARCHAR2(10)
+EXEC :mask_email := 'YES';
 SELECT 
     i.id,
     INITCAP(i.name) AS formatted_name,
@@ -15,7 +16,6 @@ SELECT
     END AS masked_email,
     d.name || ' (' || UPPER(d.code) || ')' AS department_full,
     TO_CHAR(MAX(r.review_date), 'Month YYYY') AS last_taught,
-    -- Lindisipho's length analysis
     LENGTH(i.name) AS name_length
 FROM Instructors i
 JOIN Reviews r ON i.id = r.instructor_id
@@ -30,13 +30,11 @@ SELECT
     c.code,
     c.title,
     COUNT(r.id) AS recent_reviews,
-    -- Your ROUND + Lindisipho's percentage format
     ROUND(AVG(r.rating), 1) || ' (' || 
     ROUND(100 * SUM(CASE WHEN r.rating >= 4 THEN 1 ELSE 0 END) / COUNT(r.id), 0) || '%)' AS rating_summary,
     -- Combined date formatting
     TO_CHAR(MIN(r.review_date), 'YYYY-MM-DD') || ' to ' || 
     TO_CHAR(MAX(r.review_date), 'YYYY-MM-DD') AS review_period,
-    -- Lindisipho's sentiment analysis adapted for Oracle
     CASE
         WHEN REGEXP_LIKE(r.content, 'great|excellent|amazing') THEN 'Positive'
         WHEN REGEXP_LIKE(r.content, 'poor|bad|terrible') THEN 'Negative'
@@ -53,20 +51,20 @@ GROUP BY c.code, c.title,
     END
 ORDER BY recent_reviews DESC;
 
--- 3. Comprehensive Department Stats (Combined Features)
+-- 3. Comprehensive Department Stats
 SELECT 
     d.code,
     d.name,
-    -- Your formatted numbers
+    -- formatted numbers
     TO_CHAR(AVG(cs.average_rating), '0.0') AS avg_rating,
-    -- Lindisipho's would_recommend_pct with Oracle concat
+    -- would_recommend_pct with Oracle concat
     ROUND(AVG(cs.would_take_again_pct), 0) || '%' AS would_recommend,
     -- Hybrid text analysis
     (SELECT COUNT(*) FROM Reviews r 
      JOIN Courses c ON r.course_id = c.id 
      WHERE c.department_code = d.code
      AND REGEXP_LIKE(r.content, 'great|excellent')) AS positive_keyword_count,
-    -- Your time-based subquery
+    -- time-based subquery
     (SELECT TO_CHAR(MAX(review_date), 'YYYY') FROM Reviews r
      JOIN Courses c ON r.course_id = c.id
      WHERE c.department_code = d.code) AS latest_review_year
@@ -83,7 +81,7 @@ EXEC :min_reviews := 5;
 SELECT 
     i.name,
     d.name AS department,
-    -- Your rating categories
+    -- rating categories
     CASE 
         WHEN AVG(r.rating) >= 4.5 THEN '★★★★★'
         WHEN AVG(r.rating) >= 3.8 THEN '★★★★'
@@ -92,7 +90,7 @@ SELECT
     -- Combined workload/difficulty analysis
     ROUND(AVG(r.workload_hours), 1) || ' hrs' AS workload,
     ROUND(AVG(r.difficulty), 1) || '/5' AS difficulty,
-    -- Lindisipho's anonymized reviewer count
+    -- anonymized reviewer count
     COUNT(DISTINCT CASE 
         WHEN r.is_anonymous = 1 THEN 'Anon_' || DBMS_RANDOM.STRING('A', 8)
         ELSE u.id
@@ -109,13 +107,13 @@ ORDER BY AVG(r.rating) DESC;
 SELECT 
     TO_CHAR(r.review_date, 'YYYY-MM') AS month,
     COUNT(r.id) AS review_count,
-    -- Your formatted aggregates
+    -- formatted aggregates
     TO_CHAR(AVG(r.rating), '0.00') AS avg_rating,
-    -- Lindisipho's sentiment breakdown
+    -- sentiment breakdown
     ROUND(100 * SUM(CASE 
         WHEN REGEXP_LIKE(r.content, 'great|excellent') THEN 1 ELSE 0 
     END) / COUNT(r.id), 0) || '%' AS positive_pct,
-    -- Your time-trend calculation
+    -- time-trend calculation
     ROUND(
         (AVG(CASE WHEN r.review_date >= ADD_MONTHS(SYSDATE, -3) THEN r.rating END) -
         AVG(CASE WHEN r.review_date BETWEEN ADD_MONTHS(SYSDATE, -6) AND ADD_MONTHS(SYSDATE, -3) 

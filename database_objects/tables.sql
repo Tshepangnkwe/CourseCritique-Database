@@ -134,15 +134,3 @@ CREATE TABLE course_statistics (
   last_updated TIMESTAMP WITH TIME ZONE DEFAULT SYSTIMESTAMP,
   CONSTRAINT fk_stats_course FOREIGN KEY (course_id) REFERENCES courses(id) ON DELETE CASCADE
 );
-
--- Indexes
-CREATE UNIQUE INDEX idx_course_code_dept ON courses (code, department_code);
-CREATE UNIQUE INDEX idx_course_instructor_semester ON course_instructors (course_id, instructor_id, semester);
-CREATE UNIQUE INDEX idx_review_vote ON review_votes (review_id, user_id);
-
--- Additional indexes for performance
-CREATE INDEX idx_reviews_course ON reviews (course_id);
-CREATE INDEX idx_reviews_instructor ON reviews (instructor_id);
-CREATE INDEX idx_reviews_user ON reviews (user_id);
-CREATE INDEX idx_course_instructors_course ON course_instructors (course_id);
-CREATE INDEX idx_course_instructors_instructor ON course_instructors (instructor_id);

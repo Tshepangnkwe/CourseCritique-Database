@@ -11,9 +11,9 @@ SELECT
     ROUND(cs.average_rating, 2) AS avg_rating,
     cs.total_reviews
 FROM 
-    Courses c
+    courses c
 JOIN 
-    CourseStatistics cs ON c.id = cs.course_id
+    course_statistics cs ON c.id = cs.course_id
 WHERE 
     cs.average_rating >= 4.0
     AND cs.total_reviews >= 10
@@ -27,14 +27,14 @@ SELECT
     c.title AS course_title,
     cs.average_rating
 FROM 
-    Courses c
+    courses c
 JOIN 
-    CourseStatistics cs ON c.id = cs.course_id
+    course_statistics cs ON c.id = cs.course_id
 WHERE 
-    c.is_active = 1
+    c.is_active = TRUE
 ORDER BY 
     cs.average_rating DESC
-FETCH FIRST 5 ROWS ONLY;
+LIMIT 5;
 
 -- 3. Sorting by multiple criteria
 -- Show courses sorted by rating then review count
@@ -45,11 +45,11 @@ SELECT
     cs.average_rating,
     cs.total_reviews
 FROM 
-    Courses c
+    courses c
 JOIN 
-    Departments d ON c.department_code = d.code
+    departments d ON c.department_code = d.code
 JOIN 
-    CourseStatistics cs ON c.id = cs.course_id
+    course_statistics cs ON c.id = cs.course_id
 ORDER BY 
     cs.average_rating DESC,
     cs.total_reviews DESC;
@@ -59,15 +59,15 @@ ORDER BY
 SELECT 
     r.id AS review_id,
     c.code AS course_code,
-    SUBSTR(r.content, 1, 50) || '...' AS review_excerpt,
+    SUBSTRING(r.content, 1, 50) || '...' AS review_excerpt,
     r.rating
 FROM 
-    Reviews r
+    reviews r
 JOIN 
-    Courses c ON r.course_id = c.id
+    courses c ON r.course_id = c.id
 WHERE 
-    r.content LIKE '%excellent%'
-    OR r.content LIKE '%challenging%'
+    r.content ILIKE '%excellent%'
+    OR r.content ILIKE '%challenging%'
 ORDER BY 
     r.rating DESC;
 
@@ -80,9 +80,9 @@ SELECT
     cs.average_difficulty,
     cs.would_take_again_pct
 FROM 
-    Courses c
+    courses c
 JOIN 
-    CourseStatistics cs ON c.id = cs.course_id
+    course_statistics cs ON c.id = cs.course_id
 WHERE 
     (cs.average_difficulty >= 3.5 AND cs.average_rating >= 3.8)
     OR (cs.average_difficulty >= 4.0 AND cs.would_take_again_pct >= 70)
@@ -98,14 +98,14 @@ SELECT
     r.rating,
     r.created_at
 FROM 
-    Reviews r
+    reviews r
 JOIN 
-    Courses c ON r.course_id = c.id
+    courses c ON r.course_id = c.id
 JOIN 
-    Users u ON r.user_id = u.id
+    users u ON r.user_id = u.id
 ORDER BY 
     r.created_at DESC
-OFFSET 10 ROWS FETCH NEXT 10 ROWS ONLY;
+OFFSET 10 LIMIT 10;
 
 -- 7. Department-specific queries
 -- Find CS courses with good ratings
@@ -115,11 +115,11 @@ SELECT
     cs.average_rating,
     d.name AS department
 FROM 
-    Courses c
+    courses c
 JOIN 
-    CourseStatistics cs ON c.id = cs.course_id
+    course_statistics cs ON c.id = cs.course_id
 JOIN 
-    Departments d ON c.department_code = d.code
+    departments d ON c.department_code = d.code
 WHERE 
     d.code = 'CS'
     AND cs.average_rating > 3.5
@@ -134,12 +134,12 @@ SELECT
     r.rating,
     r.content
 FROM 
-    Reviews r
+    reviews r
 JOIN 
-    Courses c ON r.course_id = c.id
+    courses c ON r.course_id = c.id
 JOIN 
-    Instructors i ON r.instructor_id = i.id
+    instructors i ON r.instructor_id = i.id
 WHERE 
-    i.name LIKE '%Smith%'
+    i.name ILIKE '%Smith%'
 ORDER BY 
     r.rating DESC;

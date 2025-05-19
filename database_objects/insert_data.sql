@@ -28,44 +28,68 @@ INSERT INTO departments (code, name, description) VALUES
 ('ECON', 'Economics', 'Economics and finance studies');
 
 -- 3. User Accounts (Students, Instructors, Admins)
-INSERT INTO users (id, email, role, is_verified, created_at, updated_at) VALUES
--- Use gen_random_uuid() or uuid_generate_v4() for id if using UUIDs, or use SERIAL for integer PKs
--- For demonstration, assuming SERIAL/integer PKs for simplicity
-(DEFAULT, 'student1@student.com', 'student', TRUE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
-(DEFAULT, 'prof.smith@instructor.com', 'instructor', TRUE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
-(DEFAULT, 'admin1@admin.com', 'admin', TRUE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
--- ...continue for all users...
-(DEFAULT, 'admin2@admin.com', 'admin', TRUE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);
+-- Insert users and capture their UUIDs
+INSERT INTO users (id, email, role, is_verified, created_at, updated_at)
+VALUES
+  (uuid_generate_v4(), 'student1@student.com', 'student', TRUE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+  (uuid_generate_v4(), 'prof.smith@instructor.com', 'instructor', TRUE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+  (uuid_generate_v4(), 'admin1@admin.com', 'admin', TRUE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+  (uuid_generate_v4(), 'admin2@admin.com', 'admin', TRUE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);
 
 -- 4. Profile Information
-INSERT INTO profiles (user_id, first_name, last_name, display_name, avatar_url, department, bio, graduation_year) VALUES
-(1, 'John', 'Doe', 'JohnD', NULL, 'CS', 'CS major interested in AI', 2024),
--- ...continue for all profiles...
+-- Insert profile using a subquery to get the user's UUID by email
+INSERT INTO profiles (user_id, first_name, last_name, display_name, avatar_url, department, bio, graduation_year)
+VALUES (
+  (SELECT id FROM users WHERE email = 'student1@student.com'),
+  'John', 'Doe', 'JohnD', NULL, 'CS', 'CS major interested in AI', 2024
+);
 
 -- 5. Course Data
-INSERT INTO courses (id, code, title, description, credits, is_active, created_at, updated_at, department_code, created_by) VALUES
-(DEFAULT, 'CS101', 'Introduction to Programming', 'Basic programming concepts', 4, TRUE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'CS', 2),
--- ...continue for all courses...
+-- Insert course using a subquery to get the creator's UUID by email
+INSERT INTO courses (id, code, title, description, credits, is_active, created_at, updated_at, department_code, created_by)
+VALUES (
+  uuid_generate_v4(), 'CS101', 'Introduction to Programming', 'Basic programming concepts', 4, TRUE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'CS',
+  (SELECT id FROM users WHERE email = 'prof.smith@instructor.com')
+);
 
 -- 6. Instructor Records
-INSERT INTO instructors (id, user_id, name, email, department_code, office_location, website_url, is_active) VALUES
-(DEFAULT, 2, 'Jane Smith', 'prof.smith@instructor.com', 'CS', 'Room 101', 'http://smith.university.edu', TRUE),
--- ...continue for all instructors...
+-- Insert instructor using a subquery to get the user's UUID by email
+INSERT INTO instructors (id, user_id, name, email, department_code, office_location, website_url, is_active)
+VALUES (
+  uuid_generate_v4(),
+  (SELECT id FROM users WHERE email = 'prof.smith@instructor.com'),
+  'Jane Smith', 'prof.smith@instructor.com', 'CS', 'Room 101', 'http://smith.university.edu', TRUE
+);
 
 -- 7. Course-Instructor Relationships
-INSERT INTO course_instructors (id, course_id, instructor_id, semester, role, created_at, updated_at) VALUES
-(DEFAULT, 1, 1, 'Fall2023', 'Primary', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
--- ...continue for all relationships...
+-- Insert course_instructors using subqueries for course_id and instructor_id
+INSERT INTO course_instructors (id, course_id, instructor_id, semester, role, created_at, updated_at)
+VALUES (
+  uuid_generate_v4(),
+  (SELECT id FROM courses WHERE code = 'CS101'),
+  (SELECT id FROM instructors WHERE email = 'prof.smith@instructor.com'),
+  'Fall2023', 'Primary', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
+);
 
 -- 8. Review Data
-INSERT INTO reviews (id, rating, content, difficulty, workload_hours, would_take_again, is_anonymous, is_verified, status, created_at, updated_at, course_id, user_id, instructor_id) VALUES
-(DEFAULT, 5, 'Excellent course, highly recommended!', 3, 10, TRUE, FALSE, TRUE, 'approved', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 1, 1, 1),
--- ...continue for all reviews...
+-- Insert reviews using subqueries for course_id, user_id, instructor_id
+INSERT INTO reviews (id, rating, content, difficulty, workload_hours, would_take_again, is_anonymous, is_verified, status, created_at, updated_at, course_id, user_id, instructor_id)
+VALUES (
+  uuid_generate_v4(), 5, 'Excellent course, highly recommended!', 3, 10, TRUE, FALSE, TRUE, 'approved', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP,
+  (SELECT id FROM courses WHERE code = 'CS101'),
+  (SELECT id FROM users WHERE email = 'student1@student.com'),
+  (SELECT id FROM instructors WHERE email = 'prof.smith@instructor.com')
+);
 
 -- 9. Review Votes
-INSERT INTO review_votes (id, review_id, user_id, vote_type, reason, created_at) VALUES
-(DEFAULT, 1, 1, 'upvote', 'Helpful review', CURRENT_TIMESTAMP),
--- ...continue for all votes...
+-- Insert review_votes using subqueries for review_id and user_id
+INSERT INTO review_votes (id, review_id, user_id, vote_type, reason, created_at)
+VALUES (
+  uuid_generate_v4(),
+  (SELECT id FROM reviews WHERE content LIKE 'Excellent course%'),
+  (SELECT id FROM users WHERE email = 'student1@student.com'),
+  'upvote', 'Helpful review', CURRENT_TIMESTAMP
+);
 
 -- 10. Update Course Statistics (PostgreSQL upsert)
 INSERT INTO course_statistics (course_id, total_reviews, average_rating, average_difficulty, average_workload_hours, would_take_again_pct, last_updated)

@@ -1,6 +1,6 @@
 # CourseCritique Database
 
-A comprehensive SQL database for managing and analyzing university course feedback, reviews, and academic data. This project is designed for academic analytics, reporting, and as a foundation for course review web applications.
+A comprehensive PostgreSQL database for managing and analyzing university course feedback, reviews, and academic data. This project is designed for academic analytics, reporting, and as a foundation for course review web applications.
 
 ---
 
@@ -22,15 +22,15 @@ A comprehensive SQL database for managing and analyzing university course feedba
 
 ### Main Tables
 
-- **Department**: Department code, name, description.
-- **User**: User account info (student, instructor, admin).
-- **Profile**: User profile details (name, department, bio, graduation year).
-- **Course**: Course catalog with department, credits, and creator.
-- **Instructor**: Instructor details and department.
-- **CourseInstructor**: Assignment of instructors to courses per semester.
-- **Review**: Student reviews with ratings, comments, and metadata.
-- **ReviewVote**: Upvotes/downvotes on reviews.
-- **CourseStatistics**: Aggregated statistics for each course.
+- **departments**: Department code, name, description.
+- **users**: User account info (student, instructor, admin).
+- **profiles**: User profile details (name, department, bio, graduation year).
+- **courses**: Course catalog with department, credits, and creator.
+- **instructors**: Instructor details and department.
+- **course_instructors**: Assignment of instructors to courses per semester.
+- **reviews**: Student reviews with ratings, comments, and metadata.
+- **review_votes**: Upvotes/downvotes on reviews.
+- **course_statistics**: Aggregated statistics for each course.
 
 ---
 
@@ -44,7 +44,7 @@ A comprehensive SQL database for managing and analyzing university course feedba
   - 15 instructors
   - 50+ course-instructor assignments
   - 200+ realistic reviews (bell curve ratings, natural comments)
-  - 500+ review votes
+  - 100+ review votes
   - Course statistics auto-calculated from reviews
 
 ---
@@ -63,7 +63,7 @@ See [`queries/advanced_sql.sql`](queries/advanced_sql.sql) for examples.
 ## Usage
 
 1. **Setup Database:**
-   - Create an Oracle (or compatible) database.
+   - Create a PostgreSQL database.
    - Run all table creation scripts in `database_objects/`.
    - Run `insert_data.sql` to populate with test data.
 
@@ -87,8 +87,8 @@ See [`queries/advanced_sql.sql`](queries/advanced_sql.sql) for examples.
 
 ## Requirements
 
-- Oracle Database (or compatible SQL engine)
-- SQL*Plus, SQLcl, or any SQL IDE
+- PostgreSQL Database
+- psql, SQLcl, DBeaver, pgAdmin, or any PostgreSQL-compatible SQL IDE
 
 ---
 

@@ -1,149 +1,156 @@
 -- =============================================
--- Views for CourseCritique
+-- Views for CourseCritique (PostgreSQL)
 -- Author: S Masiya
 -- =============================================
 
--- View 1: ActiveCourses with Materialized Option
-CREATE OR REPLACE VIEW ActiveCourses AS
+-- View 1: ActiveCourses
+CREATE OR REPLACE VIEW active_courses AS
 SELECT 
-    c.course_id,
+    c.id AS course_id,
     c.title AS course_title,
     c.description AS course_description,
-    d.department_name,
-    u.first_name || ' ' || u.last_name AS instructor_name,
-    c.creation_date,
+    d.name AS department_name,
+    i.name AS instructor_name,
+    c.created_at AS creation_date,
     c.is_active
 FROM 
-    Course c
+    courses c
 JOIN 
-    Department d ON c.department_id = d.department_id
+    departments d ON c.department_code = d.code
 JOIN 
-    CourseInstructor ci ON c.course_id = ci.course_id
-    AND ci.is_primary = 1  -- Added to identify primary instructors
+    course_instructors ci ON c.id = ci.course_id AND ci.role = 'Primary'
 JOIN 
-    Instructor i ON ci.instructor_id = i.instructor_id
-JOIN 
-    User u ON i.user_id = u.user_id
+    instructors i ON ci.instructor_id = i.id
 WHERE 
-    c.is_active = 1
+    c.is_active = TRUE
 ORDER BY 
-    d.department_name, c.title;
+    d.name, c.title;
 
--- Materialized version with refresh schedule
-CREATE MATERIALIZED VIEW MV_ActiveCourses
-REFRESH COMPLETE NEXT SYSDATE + 1  -- Daily refresh
-AS SELECT * FROM ActiveCourses;
+-- Materialized version (PostgreSQL syntax)
+CREATE MATERIALIZED VIEW mv_active_courses
+AS
+SELECT * FROM active_courses
+WITH NO DATA;
+
+-- To refresh: REFRESH MATERIALIZED VIEW mv_active_courses;
 
 -- Indexes for materialized view
-CREATE INDEX idx_mvac_course ON MV_ActiveCourses(course_id);
-CREATE INDEX idx_mvac_dept ON MV_ActiveCourses(department_name);
+CREATE INDEX idx_mvac_course ON mv_active_courses(course_id);
+CREATE INDEX idx_mvac_dept ON mv_active_courses(department_name);
 
--- View 2: VerifiedReviews with Performance Optimizations
-CREATE OR REPLACE VIEW VerifiedReviews AS
-SELECT /*+ INDEX(r review_status_idx) */  -- Hint to use status index
-    r.review_id,
+-- View 2: VerifiedReviews
+CREATE OR REPLACE VIEW verified_reviews AS
+SELECT
+    r.id AS review_id,
     r.user_id,
     CASE 
-        WHEN r.is_anonymous = 1 THEN 'Anonymous'
-        ELSE u.first_name || ' ' || u.last_name 
+        WHEN r.is_anonymous THEN 'Anonymous'
+        ELSE u.email
     END AS user_name,
     r.course_id,
     c.title AS course_title,
     r.instructor_id,
-    i.first_name || ' ' || i.last_name AS instructor_name,
+    i.name AS instructor_name,
     r.rating,
-    r.comment,
-    r.review_date,
+    r.content AS comment,
+    r.created_at AS review_date,
     r.is_anonymous,
-    ROW_NUMBER() OVER (PARTITION BY r.course_id ORDER BY r.review_date DESC) AS review_rank
+    ROW_NUMBER() OVER (PARTITION BY r.course_id ORDER BY r.created_at DESC) AS review_rank
 FROM 
-    Review r
+    reviews r
 JOIN 
-    User u ON r.user_id = u.user_id
+    users u ON r.user_id = u.id
 JOIN 
-    Course c ON r.course_id = c.course_id
+    courses c ON r.course_id = c.id
 JOIN 
-    Instructor i ON r.instructor_id = i.instructor_id
+    instructors i ON r.instructor_id = i.id
 WHERE 
-    u.is_verified = 1
+    u.is_verified = TRUE
     AND r.status = 'approved';
 
--- View 3: InstructorRatings with Advanced Analytics
-CREATE OR REPLACE VIEW InstructorRatings AS
+-- View 3: InstructorRatings
+CREATE OR REPLACE VIEW instructor_ratings AS
 SELECT 
-    i.instructor_id,
-    i.first_name || ' ' || i.last_name AS instructor_name,
-    d.department_name,
-    COUNT(r.review_id) AS review_count,
-    ROUND(AVG(r.rating), 2) AS average_rating,
-    ROUND(AVG(r.difficulty), 2) AS average_difficulty,
-    ROUND(STDDEV(r.rating), 2) AS rating_stddev,  -- Added variability measure
-    MEDIAN(r.rating) AS median_rating  -- Added robust central tendency
+    i.id AS instructor_id,
+    i.name AS instructor_name,
+    d.name AS department_name,
+    COUNT(r.id) AS review_count,
+    ROUND(AVG(r.rating)::NUMERIC, 2) AS average_rating,
+    ROUND(AVG(r.difficulty)::NUMERIC, 2) AS average_difficulty,
+    ROUND(STDDEV_POP(r.rating)::NUMERIC, 2) AS rating_stddev,
+    PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY r.rating) AS median_rating
 FROM 
-    Instructor i
+    instructors i
 JOIN 
-    Department d ON i.department_id = d.department_id
+    departments d ON i.department_code = d.code
 LEFT JOIN 
-    Review r ON i.instructor_id = r.instructor_id
-    AND r.status = 'approved'
+    reviews r ON i.id = r.instructor_id AND r.status = 'approved'
 GROUP BY 
-    i.instructor_id, i.first_name, i.last_name, d.department_name
+    i.id, i.name, d.name
 HAVING 
-    COUNT(r.review_id) > 3  -- Only show instructors with sufficient reviews
+    COUNT(r.id) > 3
 ORDER BY 
     average_rating DESC;
 
--- Materialized version with query rewrite enabled
-CREATE MATERIALIZED VIEW MV_InstructorPerformance
-REFRESH COMPLETE ON DEMAND
-ENABLE QUERY REWRITE  -- Allows optimizer to use this instead of base tables
-AS SELECT * FROM InstructorRatings;
+-- Materialized version
+CREATE MATERIALIZED VIEW mv_instructor_performance
+AS
+SELECT * FROM instructor_ratings
+WITH NO DATA;
+
+-- To refresh: REFRESH MATERIALIZED VIEW mv_instructor_performance;
 
 -- Indexes for materialized view
-CREATE INDEX idx_mvip_instructor ON MV_InstructorPerformance(instructor_id);
-CREATE INDEX idx_mvip_dept ON MV_InstructorPerformance(department_name);
-CREATE INDEX idx_mvip_rating ON MV_InstructorPerformance(average_rating);
+CREATE INDEX idx_mvip_instructor ON mv_instructor_performance(instructor_id);
+CREATE INDEX idx_mvip_dept ON mv_instructor_performance(department_name);
+CREATE INDEX idx_mvip_rating ON mv_instructor_performance(average_rating);
 
--- View 4: DepartmentCourseSummary with Enhanced Metrics
-CREATE OR REPLACE VIEW DepartmentCourseSummary AS
+-- View 4: DepartmentCourseSummary
+CREATE OR REPLACE VIEW department_course_summary AS
 SELECT 
-    d.department_id,
-    d.department_name,
-    COUNT(DISTINCT c.course_id) AS number_of_courses,
-    COUNT(DISTINCT i.instructor_id) AS number_of_instructors,
-    ROUND(AVG(cs.average_rating), 2) AS average_course_rating,
-    COUNT(r.review_id) AS total_reviews,
-    ROUND(SUM(CASE WHEN r.rating >= 4 THEN 1 ELSE 0 END) / 
-          NULLIF(COUNT(r.review_id), 0) * 100, 1) AS percent_positive_reviews
+    d.code AS department_code,
+    d.name AS department_name,
+    COUNT(DISTINCT c.id) AS number_of_courses,
+    COUNT(DISTINCT i.id) AS number_of_instructors,
+    ROUND(AVG(cs.average_rating)::NUMERIC, 2) AS average_course_rating,
+    COUNT(r.id) AS total_reviews,
+    ROUND(
+        SUM(CASE WHEN r.rating >= 4 THEN 1 ELSE 0 END)::NUMERIC / NULLIF(COUNT(r.id), 0) * 100, 1
+    ) AS percent_positive_reviews
 FROM 
-    Department d
+    departments d
 LEFT JOIN 
-    Course c ON d.department_id = c.department_id AND c.is_active = 1
+    courses c ON d.code = c.department_code AND c.is_active = TRUE
 LEFT JOIN 
-    CourseStatistics cs ON c.course_id = cs.course_id
+    course_statistics cs ON c.id = cs.course_id
 LEFT JOIN 
-    Instructor i ON d.department_id = i.department_id
+    course_instructors ci ON c.id = ci.course_id
 LEFT JOIN 
-    Review r ON c.course_id = r.course_id AND r.status = 'approved'
+    instructors i ON ci.instructor_id = i.id
+LEFT JOIN 
+    reviews r ON c.id = r.course_id AND r.status = 'approved'
 GROUP BY 
-    d.department_id, d.department_name
+    d.code, d.name
 ORDER BY 
     average_course_rating DESC NULLS LAST;
 
--- Materialized version without partitioned refresh (partitioning removed)
-CREATE MATERIALIZED VIEW MV_DepartmentStats
-REFRESH FORCE ON DEMAND
-AS SELECT * FROM DepartmentCourseSummary;
+-- Materialized version
+CREATE MATERIALIZED VIEW mv_department_stats
+AS
+SELECT * FROM department_course_summary
+WITH NO DATA;
+
+-- To refresh: REFRESH MATERIALIZED VIEW mv_department_stats;
 
 -- ======================
 -- Additional Optimizations
 -- ======================
 
 -- Create base table indexes to support views
-CREATE INDEX idx_review_status ON Review(status) COMPUTE STATISTICS;
-CREATE INDEX idx_course_active ON Course(is_active) COMPUTE STATISTICS;
-CREATE INDEX idx_user_verified ON User(is_verified) COMPUTE STATISTICS;
+CREATE INDEX idx_review_status ON reviews(status);
+CREATE INDEX idx_course_active ON courses(is_active);
+CREATE INDEX idx_user_verified ON users(is_verified);
 
 -- Create view comments for documentation
-COMMENT ON MATERIALIZED VIEW MV_InstructorPerformance IS 'Materialized view of instructor ratings with query rewrite enabled, refreshed on demand';
-COMMENT ON MATERIALIZED VIEW MV_DepartmentStats IS 'Partitioned materialized view of department statistics with force refresh option';
+COMMENT ON MATERIALIZED VIEW mv_instructor_performance IS 'Materialized view of instructor ratings, refreshed manually for analytics.';
+COMMENT ON MATERIALIZED VIEW mv_department_stats IS 'Materialized view of department statistics, refreshed manually for analytics.';
